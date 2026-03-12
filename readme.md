@@ -27,12 +27,9 @@ source myenv/bin/activate
 Install HepGPU:
 
 ```
-!pip install git+https://github.com/navasmontilla/HepGPU.git
+pip install git+https://github.com/navasmontilla/HepGPU.git
 ```
 
-Go to the desired location where you want to download CAELUM, e.g. ```me@myPc: MyFolder/$``` and clone the repository in your local computer:
-
-```git clone https://github.com/navasmontilla/Hep.git``` 
 
 Install dependencies:
 
