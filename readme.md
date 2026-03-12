@@ -1,0 +1,41 @@
+# HepGPU:  A Python package for the simulation of virus spread and inmune response in the liver
+
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Installation](#installation-instructions)
+3. [Automated test](#automated-test)
+
+
+
+## Introduction
+
+`HepGPU` is a Python package for the simulation of virus spread and inmune response in the liver.
+
+## Installation instructions
+
+Install Python 3 and create virtual environment:
+
+```
+sudo apt update
+sudo apt install -y python3 python3-pip
+python3 -m venv myenv
+source myenv/bin/activate
+```
+
+Install HepGPU:
+
+```
+!pip install git+https://github.com/navasmontilla/HepGPU.git
+```
+
+Go to the desired location where you want to download CAELUM, e.g. ```me@myPc: MyFolder/$``` and clone the repository in your local computer:
+
+```git clone https://github.com/navasmontilla/Hep.git``` 
+
+Install dependencies:
+
+```
+pip3 install matplotlib numpy zarr matplotlib 
+```
