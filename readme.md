@@ -8,7 +8,6 @@
 3. [Automated test](#automated-test)
 
 
-
 ## Introduction
 
 `HepGPU` is a Python package for the simulation of virus spread and inmune response in the liver.
