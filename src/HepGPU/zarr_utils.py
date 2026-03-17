@@ -8,23 +8,42 @@ import imageio
 
 def create_zarr_store(out_name, nt, save_every, nx, ny, nz):
     """
-    Crear un Zarr store con grupos y arrays para variables y coeficientes.
-    Devuelve el store y los arrays creados.
+    Create a Zarr store to save simulation variables and transport coefficients.
+
+    Parameters
+    ----------
+    out_name : str
+        Output path of the Zarr store.
+    nt : int
+        Total number of time steps.
+    save_every : int
+        Number of time steps between saved states.
+    nx, ny, nz : int
+        Number of grid nodes along the x, y, and z directions.
+
+    Returns
+    -------
+    store : zarr.Group
+        Root Zarr store.
+    arrays : tuple
+        Tuple containing the variable arrays `(q1, Th, Tc, q3)`.
+    coef_arrays : tuple
+        Tuple containing the coefficient arrays `(d1, dTh, dTc, d3)`.
     """
     if os.path.exists(out_name):
-        os.system(f"rm -rf {out_name}")  # limpiar si ya existe
+        os.system(f"rm -rf {out_name}")  
 
     store = zarr.open(out_name, mode='w')
     variables_grp = store.create_group("variables")
     difusion_adveccion_grp = store.create_group("coeficients")
 
-    # Arrays de variables
+    # State variables arrays
     q1_array = variables_grp.create("q1", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
     Th_array = variables_grp.create("Th", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
     Tc_array = variables_grp.create("Tc", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
     q3_array = variables_grp.create("q3", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
 
-    # Arrays de coeficientes de difusión/advección
+    # Transport coefficients arrays
     d1_array = difusion_adveccion_grp.create("d1", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
     dTh_array = difusion_adveccion_grp.create("dTh", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
     dTc_array = difusion_adveccion_grp.create("dTc", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
@@ -35,20 +54,43 @@ def create_zarr_store(out_name, nt, save_every, nx, ny, nz):
 
 def save_initial_state(tp, use_gpu, arrays, coef_arrays, variables, coef_values, store, dx, dy, dz):
     """
-    Guardar el estado inicial de las variables y coeficientes en los arrays Zarr.
+    Save the initial simulation state and transport coefficients to a Zarr store.
+
+    Parameters
+    ----------
+    tp : module
+        Numerical backend, typically `numpy` or `cupy`.
+    use_gpu : bool
+        If True, arrays are transferred from GPU to CPU before saving.
+    arrays : tuple
+        Tuple of Zarr arrays for the state variables `(q1, Th, Tc, q3)`.
+    coef_arrays : tuple
+        Tuple of Zarr arrays for the transport coefficients `(d1, dTh, dTc, d3)`.
+    variables : tuple
+        Tuple containing the current model variables `(q1, Th, Tc, q3)`.
+    coef_values : tuple
+        Tuple containing the coefficient fields `(d1, dTh, dTc, d3)`.
+    store : zarr.Group
+        Root Zarr store.
+    dx, dy, dz : float
+        Grid spacings along the x, y, and z directions.
+
+    Returns
+    -------
+    None
     """
     q1_array, Th_array, Tc_array, q3_array = arrays
     d1_array, dTh_array, dTc_array, d3_array = coef_arrays
     q1, Th, Tc, q3 = variables
     d1, dTh, dTc, d3 = coef_values
 
-    # Guardar atributos
+    # Store grid spacings and device info as attributes
     store.attrs["dx"] = dx
     store.attrs["dy"] = dy
     store.attrs["dz"] = dz
     store.attrs["device"] = "GPU" if use_gpu else "CPU"
 
-    # Guardar variables iniciales
+    # Save initial state and coefficients at index 0
     if use_gpu:
         q1_array[0] = tp.asnumpy(q1)
         Th_array[0] = tp.asnumpy(Th)
@@ -74,14 +116,24 @@ def save_initial_state(tp, use_gpu, arrays, coef_arrays, variables, coef_values,
         
 def save_time_step(tp, use_gpu, arrays, variables, save_index):
     """
-    Guardar el estado de las variables en los arrays Zarr en el índice save_index.
-    
-    Parámetros:
-        tp          : numpy o cupy
-        use_gpu     : True si se usa CuPy
-        arrays      : tupla con los arrays Zarr (q1_array, Th_array, Tc_array, q3_array)
-        variables   : tupla con los arrays actuales (q1, Th, Tc, q3)
-        save_index  : índice de tiempo donde se guardará
+    Save a simulation time step to the Zarr arrays.
+
+    Parameters
+    ----------
+    tp : module
+        Numerical backend, typically `numpy` or `cupy`.
+    use_gpu : bool
+        If True, arrays are transferred from GPU to CPU before saving.
+    arrays : tuple
+        Tuple of Zarr arrays `(q1_array, Th_array, Tc_array, q3_array)`.
+    variables : tuple
+        Tuple containing the current model variables `(q1, Th, Tc, q3)`.
+    save_index : int
+        Time index where the variables will be stored.
+
+    Returns
+    -------
+    None
     """
     q1_array, Th_array, Tc_array, q3_array = arrays
     q1, Th, Tc, q3 = variables
@@ -100,35 +152,47 @@ def save_time_step(tp, use_gpu, arrays, variables, save_index):
         
 def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variables_group="variables", coef_group="coeficients", geom_group=None):
     """
-    Exporta variables 3D guardadas en un archivo Zarr a archivos .vti.
-    
-    Parámetros:
-        zarr_file (str): Ruta al archivo Zarr.
-        output_dir (str): Carpeta donde se guardarán los archivos .vti.
-        variables_group (str): Nombre del grupo de variables dentro del Zarr.
-        coef_group (str): Nombre del grupo de coeficientes de difusión/advección.
-        geom_group (str|None): Nombre del grupo de geometría si se quiere leer (por ejemplo xi). 
+    Export a Zarr simulation to VTK image files (.vti).
+
+    Each saved time step is exported as a separate `.vti` file containing the
+    four model variables as point data.
+
+    Parameters
+    ----------
+    zarr_file : str, optional
+        Path to the Zarr simulation file.
+    output_dir : str, optional
+        Output directory where `.vti` files will be written.
+    variables_group : str, optional
+        Name of the Zarr group containing the model variables.
+    coef_group : str, optional
+        Name of the Zarr group containing transport coefficients.
+    geom_group : str or None, optional
+        Optional name of a geometry group to be read in the future.
+
+    Returns
+    -------
+    None
     """
-    
-    # Abrir el archivo zarr
+    # Open the Zarr store in read mode
     store = zarr.open(zarr_file, mode="r")
 
     variables_grp = store[variables_group]
     difusion_adveccion_grp = store[coef_group]
     
-    # Leer arrays de variables
+    # Read variable arrays
     q1 = variables_grp["q1"]
     Th = variables_grp["Th"]
     Tc = variables_grp["Tc"]
     q3 = variables_grp["q3"]
     
-    # Leer arrays de coeficientes si se necesitan
+    # Read coefficient arrays if needed
     d1 = difusion_adveccion_grp["d1"]
     dTh = difusion_adveccion_grp["dTh"]
     dTc = difusion_adveccion_grp["dTc"]
     d3 = difusion_adveccion_grp["d3"]
 
-    # Leer geometría si se especifica
+    # Read geometry if specified (currently ignored)
     xi = None
     #geometria_grp = store[geom_group]
     #xi = geometria_grp["xi"]
@@ -141,7 +205,7 @@ def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variabl
     print(f"Exportando {q1.shape[0]} pasos de tiempo a .vti ...")
 
     for i in range(q1.shape[0]):
-        # Convertir cada variable a NumPy
+        # Conert arrays to numpy if they are Zarr arrays
         q1_i = np.array(q1[i])
         Th_i = np.array(Th[i])
         Tc_i = np.array(Tc[i])
@@ -149,7 +213,7 @@ def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variabl
 
         output_path = os.path.join(output_dir, f"variables_{i:04d}")
 
-        # Guardar todas las variables en el mismo .vti
+        # Save the current time step as a VTK image file with the variables as point data
         imageToVTK(
             output_path,
             origin=(0.0, 0.0, 0.0),
@@ -196,7 +260,6 @@ def export_zarr_to_png(
     fps : int
         Frames per second for the animation.
     """
-
     os.makedirs(output_dir, exist_ok=True)
 
     store = zarr.open(zarr_file, mode="r")
@@ -214,11 +277,11 @@ def export_zarr_to_png(
 
     x = np.arange(nx) * dx
 
-    # central slice
+    # Central slice indices
     j = q1.shape[2] // 2
     k = q1.shape[3] // 2
 
-    # initial state
+    # initial state for comparison in plots
     q1_ini = np.array(q1[0, :, j, k])
     Th_ini = np.array(Th[0, :, j, k])
     Tc_ini = np.array(Tc[0, :, j, k])
@@ -276,9 +339,7 @@ def export_zarr_to_png(
 
     print("PNG export completed.")
 
-    # --------------------------------
     # Create animation
-    # --------------------------------
     if make_animation:
 
         gif_path = os.path.join(output_dir, "animation.gif")
