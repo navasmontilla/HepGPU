@@ -235,10 +235,20 @@ def export_zarr_to_png(
     output_dir="png_output",
     variables_group="variables",
     make_animation=True,
+    export_time_plot=True,
+    export_phase_plot=True,
     fps=10
 ):
     """
-    Export simulation stored in Zarr to PNG images and optionally create an animation.
+    Export simulation stored in Zarr to PNG images and optionally create
+    an animation, temporal evolution plots, and phase diagrams.
+
+    Outputs
+    -------
+    - Spatial PNG frames (central slice along x)
+    - Optional GIF animation
+    - Optional temporal evolution plots (domain-integrated variables)
+    - Optional phase diagrams
 
     Each frame contains 4 subplots:
         q1, Th, Tc, q3 along x (central slice)
@@ -257,8 +267,19 @@ def export_zarr_to_png(
     make_animation : bool
         If True, generate a GIF animation.
 
+    export_time_plot : bool
+        If True, export temporal evolution plots.
+
+    export_phase_plot : bool
+        If True, export phase diagrams.
+
     fps : int
         Frames per second for the animation.
+
+    Returns
+    -------
+    frame_paths : list of str
+        List of paths to the generated PNG frames.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -271,11 +292,15 @@ def export_zarr_to_png(
     q3 = variables["q3"]
 
     dx = store.attrs["dx"]
+    dy = store.attrs["dy"] 
+    dz = store.attrs["dz"] 
+    td = store.attrs["td"] 
 
     nt = q1.shape[0]
     nx = q1.shape[1]
 
     x = np.arange(nx) * dx
+    t = np.arange(nt) * td  # time vector based on the number of snapshots and the save interval
 
     # Central slice indices
     j = q1.shape[2] // 2
@@ -352,3 +377,78 @@ def export_zarr_to_png(
                 writer.append_data(image)
 
         print(f"Animation saved to {gif_path}")
+
+    # Create temporal graphs
+    if export_time_plot:
+
+        q1total = np.sum(q1, axis=(1, 2, 3)) * dx * dy * dz
+        Thtotal = np.sum(Th, axis=(1, 2, 3)) * dx * dy * dz
+        Tctotal = np.sum(Tc, axis=(1, 2, 3)) * dx * dy * dz
+        q3total = np.sum(q3, axis=(1, 2, 3)) * dx * dy * dz
+
+        fig, axs = plt.subplots(2,2,figsize=(8, 3), constrained_layout=True)
+
+        ax1, ax2, ax3, ax4 = axs[0,0], axs[0,1], axs[1,0], axs[1,1]
+
+        ax1.plot(t, q1total, 'b', label='q1(t)')
+        ax2.plot(t, Thtotal, 'g', label='Th(t)')
+        ax3.plot(t, Tctotal, 'y', label='Tc(t)')
+        ax4.plot(t, q3total, 'r', label='q3(t)')
+
+        ax1.set_title("Virus (q1)")
+        ax1.set_xlabel("tiempo (s)")
+        ax1.set_ylabel("q1(t)")
+
+        ax2.set_title("T helper (Th)")
+        ax2.set_xlabel("tiempo (s)")
+        ax2.set_ylabel("Th(t)")
+
+        ax3.set_title("T citotoxicos (Tc)")
+        ax3.set_xlabel("tiempo (s)")
+        ax3.set_ylabel("Tc(t)")
+
+        ax4.set_title("Citoquinas (q3)")
+        ax4.set_xlabel("tiempo (s)")
+        ax4.set_ylabel("q3(t)")
+
+        time_plot_path = os.path.join(output_dir, "temporal_evolution.png")
+        fig.savefig(time_plot_path, dpi=300, bbox_inches="tight", pad_inches=0.05)
+        plt.close(fig)
+
+        print(f"Saved {time_plot_path}")
+
+    if export_phase_plot:
+
+        q1total = np.sum(q1, axis=(1, 2, 3)) * dx * dy * dz
+        Thtotal = np.sum(Th, axis=(1, 2, 3)) * dx * dy * dz
+        Tctotal = np.sum(Tc, axis=(1, 2, 3)) * dx * dy * dz
+        q3total = np.sum(q3, axis=(1, 2, 3)) * dx * dy * dz
+
+        fig, axs = plt.subplots(1, 3, figsize=(8, 3), constrained_layout=True)
+
+        axs[0].plot(q1total, Tctotal, 'k')
+        axs[0].plot(q1total[0], Tctotal[0], 'or', label="Inicio")
+        axs[0].plot(q1total[-1], Tctotal[-1], 'ob', label="Final")
+        axs[0].set_xlabel("Virus (q1)")
+        axs[0].set_ylabel("T cytotoxic (Tc)")
+        axs[0].legend()
+
+        axs[1].plot(q1total, Thtotal, 'k')
+        axs[1].plot(q1total[0], Thtotal[0], 'or', label="Inicio")
+        axs[1].plot(q1total[-1], Thtotal[-1], 'ob', label="Final")
+        axs[1].set_xlabel("Virus (q1)")
+        axs[1].set_ylabel("T helper (Th)")
+        axs[1].legend()
+
+        axs[2].plot(q1total, q3total, 'k')
+        axs[2].plot(q1total[0], q3total[0], 'or', label="Inicio")
+        axs[2].plot(q1total[-1], q3total[-1], 'ob', label="Final")
+        axs[2].set_xlabel("Virus (q1)")
+        axs[2].set_ylabel("Citokines (q3)")
+        axs[2].legend()
+
+        phase_plot_path = os.path.join(output_dir, "phase_diagram.png")
+        fig.savefig(phase_plot_path, dpi=300, bbox_inches="tight", pad_inches=0.05)
+        plt.close(fig)
+
+        print(f"Saved {phase_plot_path}")
