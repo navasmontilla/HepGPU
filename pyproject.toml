@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "HepGPU"
 version = "0.1.0"
 description = "3D liver infection simulation in GPU"
-authors = [{name="A. Navas, E. Cirujeda"}]
+authors = [{name="E. Cirujeda, A. Navas-Montilla"}]
 requires-python = ">=3.9"
 
 [tool.setuptools]
