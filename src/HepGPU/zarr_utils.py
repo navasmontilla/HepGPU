@@ -333,17 +333,17 @@ def export_zarr_to_png(
 
         axs[0,1].plot(x, Th_ini, '--', label="initial")
         axs[0,1].plot(x, Th_now, label=f"t={i}")
-        axs[0,1].set_title("Th cells")
+        axs[0,1].set_title("T helper (Th)")
         axs[0,1].set_ylabel("Th(x)")
         axs[0,1].legend()
 
         axs[1,0].plot(x, Tc_ini, '--', label="initial")
         axs[1,0].plot(x, Tc_now, label=f"t={i}")
-        axs[1,0].set_title("Tc cells")
+        axs[1,0].set_title("T cytotoxic (Tc)")
         axs[1,0].set_ylabel("Tc(x)")
         axs[1,0].legend()
 
-        #axs[1,1].plot(x, q3_ini, '--', label="initial")
+        axs[1,1].plot(x, q3_ini, '--', label="initial")
         axs[1,1].plot(x, q3_now, label=f"t={i}")
         axs[1,1].set_title("Cytokines (q3)")
         axs[1,1].set_ylabel("q3(x)")
@@ -396,19 +396,19 @@ def export_zarr_to_png(
         ax4.plot(t, q3total, 'r', label='q3(t)')
 
         ax1.set_title("Virus (q1)")
-        ax1.set_xlabel("tiempo (s)")
+        ax1.set_xlabel("time (s)")
         ax1.set_ylabel("q1(t)")
 
         ax2.set_title("T helper (Th)")
-        ax2.set_xlabel("tiempo (s)")
+        ax2.set_xlabel("time (s)")
         ax2.set_ylabel("Th(t)")
 
-        ax3.set_title("T citotoxicos (Tc)")
-        ax3.set_xlabel("tiempo (s)")
+        ax3.set_title("T cytotoxic (Tc)")
+        ax3.set_xlabel("time (s)")
         ax3.set_ylabel("Tc(t)")
 
-        ax4.set_title("Citoquinas (q3)")
-        ax4.set_xlabel("tiempo (s)")
+        ax4.set_title("Cytokines (q3)")
+        ax4.set_xlabel("time (s)")
         ax4.set_ylabel("q3(t)")
 
         time_plot_path = os.path.join(output_dir, "temporal_evolution.png")
@@ -427,24 +427,24 @@ def export_zarr_to_png(
         fig, axs = plt.subplots(1, 3, figsize=(8, 3), constrained_layout=True)
 
         axs[0].plot(q1total, Tctotal, 'k')
-        axs[0].plot(q1total[0], Tctotal[0], 'or', label="Inicio")
-        axs[0].plot(q1total[-1], Tctotal[-1], 'ob', label="Final")
+        axs[0].plot(q1total[0], Tctotal[0], 'or', label="Start")
+        axs[0].plot(q1total[-1], Tctotal[-1], 'ob', label="End")
         axs[0].set_xlabel("Virus (q1)")
         axs[0].set_ylabel("T cytotoxic (Tc)")
         axs[0].legend()
 
         axs[1].plot(q1total, Thtotal, 'k')
-        axs[1].plot(q1total[0], Thtotal[0], 'or', label="Inicio")
-        axs[1].plot(q1total[-1], Thtotal[-1], 'ob', label="Final")
+        axs[1].plot(q1total[0], Thtotal[0], 'or', label="Start")
+        axs[1].plot(q1total[-1], Thtotal[-1], 'ob', label="End")
         axs[1].set_xlabel("Virus (q1)")
         axs[1].set_ylabel("T helper (Th)")
         axs[1].legend()
 
         axs[2].plot(q1total, q3total, 'k')
-        axs[2].plot(q1total[0], q3total[0], 'or', label="Inicio")
-        axs[2].plot(q1total[-1], q3total[-1], 'ob', label="Final")
+        axs[2].plot(q1total[0], q3total[0], 'or', label="Start")
+        axs[2].plot(q1total[-1], q3total[-1], 'ob', label="End")
         axs[2].set_xlabel("Virus (q1)")
-        axs[2].set_ylabel("Citokines (q3)")
+        axs[2].set_ylabel("Cytokines (q3)")
         axs[2].legend()
 
         phase_plot_path = os.path.join(output_dir, "phase_diagram.png")
