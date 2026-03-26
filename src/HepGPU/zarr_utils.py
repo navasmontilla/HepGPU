@@ -52,7 +52,7 @@ def create_zarr_store(out_name, nt, save_every, nx, ny, nz):
     return store, (q1_array, Th_array, Tc_array, q3_array), (d1_array, dTh_array, dTc_array, d3_array)
 
 
-def save_initial_state(tp, use_gpu, arrays, coef_arrays, variables, coef_values, store, dx, dy, dz):
+def save_initial_state(tp, use_gpu, arrays, coef_arrays, variables, coef_values, store, dx, dy, dz, td):
     """
     Save the initial simulation state and transport coefficients to a Zarr store.
 
@@ -88,6 +88,7 @@ def save_initial_state(tp, use_gpu, arrays, coef_arrays, variables, coef_values,
     store.attrs["dx"] = dx
     store.attrs["dy"] = dy
     store.attrs["dz"] = dz
+    store.attrs["td"] = td
     store.attrs["device"] = "GPU" if use_gpu else "CPU"
 
     # Save initial state and coefficients at index 0
@@ -281,8 +282,11 @@ def export_zarr_to_png(
     frame_paths : list of str
         List of paths to the generated PNG frames.
     """
-    os.makedirs(output_dir, exist_ok=True)
+    frames_dir = os.path.join(output_dir, "frames")
 
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(frames_dir, exist_ok=True)
+    
     store = zarr.open(zarr_file, mode="r")
     variables = store[variables_group]
 
@@ -354,8 +358,8 @@ def export_zarr_to_png(
 
         plt.tight_layout()
 
-        fname = os.path.join(output_dir, f"frame_{i:04d}.png")
-        plt.savefig(fname)
+        fname = os.path.join(frames_dir, f"frame_{i:04d}.png")
+        plt.savefig(fname, dpi=150, bbox_inches="tight")
         plt.close()
 
         frame_paths.append(fname)
@@ -378,13 +382,14 @@ def export_zarr_to_png(
 
         print(f"Animation saved to {gif_path}")
 
+    if export_time_plot or export_phase_plot:
+        q1total = np.array([np.sum(np.array(q1[i])) * dx * dy * dz for i in range(nt)])
+        Thtotal = np.array([np.sum(np.array(Th[i])) * dx * dy * dz for i in range(nt)])
+        Tctotal = np.array([np.sum(np.array(Tc[i])) * dx * dy * dz for i in range(nt)])
+        q3total = np.array([np.sum(np.array(q3[i])) * dx * dy * dz for i in range(nt)])
+
     # Create temporal graphs
     if export_time_plot:
-
-        q1total = np.sum(q1, axis=(1, 2, 3)) * dx * dy * dz
-        Thtotal = np.sum(Th, axis=(1, 2, 3)) * dx * dy * dz
-        Tctotal = np.sum(Tc, axis=(1, 2, 3)) * dx * dy * dz
-        q3total = np.sum(q3, axis=(1, 2, 3)) * dx * dy * dz
 
         fig, axs = plt.subplots(2,2,figsize=(8, 3), constrained_layout=True)
 
@@ -419,11 +424,6 @@ def export_zarr_to_png(
 
     if export_phase_plot:
 
-        q1total = np.sum(q1, axis=(1, 2, 3)) * dx * dy * dz
-        Thtotal = np.sum(Th, axis=(1, 2, 3)) * dx * dy * dz
-        Tctotal = np.sum(Tc, axis=(1, 2, 3)) * dx * dy * dz
-        q3total = np.sum(q3, axis=(1, 2, 3)) * dx * dy * dz
-
         fig, axs = plt.subplots(1, 3, figsize=(8, 3), constrained_layout=True)
 
         axs[0].plot(q1total, Tctotal, 'k')
@@ -452,3 +452,5 @@ def export_zarr_to_png(
         plt.close(fig)
 
         print(f"Saved {phase_plot_path}")
+    
+    return frame_paths
