@@ -6,7 +6,7 @@ import os
 
 
 # ==========================================
-# Grid del test (solo para definir m√°scaras)
+# Grid del test (solo para definir m·scaras)
 # ==========================================
 
 nx, ny, nz = 41, 3, 3
@@ -20,7 +20,7 @@ X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
 
 # ==========================================
-# M√°scaras)
+# M·scaras)
 # ==========================================
 
 
@@ -29,7 +29,7 @@ mask_inflow = (X <= 0.1) # True dentro del cilindro
 
 
 # ==========================================
-# Ejecutar simulaci√≥n
+# Ejecutar simulaciÛn
 # ==========================================
 
 if __name__ == "__main__":
@@ -44,9 +44,9 @@ if __name__ == "__main__":
         ny=ny,
         nz=nz,
 
-        tf=50 ,    
+        tf=50 ,
         td=1,
-        
+
         params={
             "a1": 1.0,       # virus natural decay
             "C1": 1.0,       # virus carrying capacity
@@ -65,28 +65,28 @@ if __name__ == "__main__":
 
             "a3": 0.8,       # cytokine production
             "a_nd": 0.6,      # cytokine degradation
-            
+
             "dTc": 0.5,
             "d1": 0.6,
             "dTh": 0.9,
-            "d3": 0.5         
+            "d3": 0.5
         },
 
         mask_inflow=mask_inflow,
 
-        CI_values=(0.1, 0.0, 0.0, 0.0), 
-        
+        CI_values=(0.1, 0.0, 0.0, 0.0),
+
         out_name = "output1D.zarr"
     )
 
     export_zarr_to_vtk(
         zarr_file="output1D.zarr",
-        output_dir="vtk_test_1D"
+        output_dir="resultados1D/vtk"
     )
-    
+
     export_zarr_to_png(
         zarr_file="output1D.zarr",
-        output_dir="vtk_test_1D"
+        output_dir="resultados1D/graficas"
     )
 
     print("Test completado")
