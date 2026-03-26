@@ -206,7 +206,7 @@ def run(
     save_initial_state(tp, use_gpu, arrays, coef_arrays,
                                   variables=(q1, Th, Tc, q3),
                                   coef_values=(d1, dTh, dTc, d3),
-                                  store=store, dx=dx, dy=dy, dz=dz)
+                                  store=store, dx=dx, dy=dy, dz=dz, td=td)
 
     # Explicit Euler time integration loop
     start = time.time()
