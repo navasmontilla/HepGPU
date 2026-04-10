@@ -35,7 +35,7 @@ def create_zarr_store(out_name, nt, save_every, nx, ny, nz):
 
     store = zarr.open(out_name, mode='w')
     variables_grp = store.create_group("variables")
-    difusion_adveccion_grp = store.create_group("coeficients")
+    diffusion_advection_grp = store.create_group("coefficients")
 
     # State variables arrays
     q1_array = variables_grp.create("q1", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
@@ -44,10 +44,10 @@ def create_zarr_store(out_name, nt, save_every, nx, ny, nz):
     q3_array = variables_grp.create("q3", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
 
     # Transport coefficients arrays
-    d1_array = difusion_adveccion_grp.create("d1", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
-    dTh_array = difusion_adveccion_grp.create("dTh", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
-    dTc_array = difusion_adveccion_grp.create("dTc", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
-    d3_array = difusion_adveccion_grp.create("d3", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
+    d1_array = diffusion_advection_grp.create("d1", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
+    dTh_array = diffusion_advection_grp.create("dTh", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
+    dTc_array = diffusion_advection_grp.create("dTc", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
+    d3_array = diffusion_advection_grp.create("d3", shape=(nt // save_every + 1, nx, ny, nz), chunks=(1, nx, ny, nz), dtype='f4')
 
     return store, (q1_array, Th_array, Tc_array, q3_array), (d1_array, dTh_array, dTc_array, d3_array)
 
@@ -151,7 +151,7 @@ def save_time_step(tp, use_gpu, arrays, variables, save_index):
         q3_array[save_index] = q3
         
         
-def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variables_group="variables", coef_group="coeficients", geom_group=None):
+def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variables_group="variables", coef_group="coefficients", geom_group=None):
     """
     Export a Zarr simulation to VTK image files (.vti).
 
@@ -179,7 +179,7 @@ def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variabl
     store = zarr.open(zarr_file, mode="r")
 
     variables_grp = store[variables_group]
-    difusion_adveccion_grp = store[coef_group]
+    diffusion_advection_grp = store[coef_group]
     
     # Read variable arrays
     q1 = variables_grp["q1"]
@@ -188,10 +188,10 @@ def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variabl
     q3 = variables_grp["q3"]
     
     # Read coefficient arrays if needed
-    d1 = difusion_adveccion_grp["d1"]
-    dTh = difusion_adveccion_grp["dTh"]
-    dTc = difusion_adveccion_grp["dTc"]
-    d3 = difusion_adveccion_grp["d3"]
+    d1 = diffusion_advection_grp["d1"]
+    dTh = diffusion_advection_grp["dTh"]
+    dTc = diffusion_advection_grp["dTc"]
+    d3 = diffusion_advection_grp["d3"]
 
     # Read geometry if specified (currently ignored)
     xi = None
@@ -203,10 +203,10 @@ def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variabl
     dz = store.attrs["dz"]
 
     os.makedirs(output_dir, exist_ok=True)
-    print(f"Exportando {q1.shape[0]} pasos de tiempo a .vti ...")
+    print(f"Exporting {q1.shape[0]} time steps to .vti files...")
 
     for i in range(q1.shape[0]):
-        # Conert arrays to numpy if they are Zarr arrays
+        # Convert arrays to numpy if they are Zarr arrays
         q1_i = np.array(q1[i])
         Th_i = np.array(Th[i])
         Tc_i = np.array(Tc[i])
@@ -226,9 +226,9 @@ def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variabl
                 "q3": q3_i
             }
         )
-        print(f" Guardado: {output_path}.vti")
+        print(f"Saved: {output_path}.vti")
 
-    print("Exportación completada.")
+    print("Export completed.")
     
     
 def export_zarr_to_png(

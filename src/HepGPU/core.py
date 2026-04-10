@@ -158,7 +158,7 @@ def run(
 
     # Averaging diffusion coefficient at interfaces between nodes
     d1x,d1y,d1z = avg_coefficients_3d(tp,d1)
-    Thx,Thy,Thz = avg_coefficients_3d(tp,dTh)
+    dThx,dThy,dThz = avg_coefficients_3d(tp,dTh)
     dTcx,dTcy,dTcz = avg_coefficients_3d(tp,dTc)
     d3x,d3y,d3z = avg_coefficients_3d(tp,d3)
     
@@ -184,7 +184,7 @@ def run(
     # Save every td seconds simulated
     save_every = max(1, int(td / dt))  # number of time steps between saves
     print(f"Grid: {nx}x{ny}x{nz}, dt={dt:.5e}, nt={nt}, device={'GPU' if use_gpu else 'CPU'}")
-    print(f"Guardando cada {save_every} pasos (≈{td} s simulados)")
+    print(f"Saving every  {save_every} steps (simulated ≈ {td} s)")
 
     # Normalization of the inflow region
     mask_inflow_tp = tp.asarray(mask_inflow, dtype=bool)
@@ -192,8 +192,8 @@ def run(
     count = tp.sum(mask_inflow_tp) 
     xi=xi/(count*dx*dy*dz+1.e-16) 
 
-    print("Integral de xi =", tp.sum(xi) * dx * dy * dz)
-    print(count)
+    print(f"Integral of xi = {tp.sum(xi) * dx * dy * dz}")
+    print(f"Count: {count}")
 
     # Prepare Zarr output store and arrays
     if os.path.exists(out_name):
@@ -221,7 +221,7 @@ def run(
 
         # Laplacian diffusion terms (calculated at interior nodes)
         lap_q1 = laplacian_3d(q1, d1x, d1y, d1z, dx, dy, dz)
-        lap_Th = laplacian_3d(Th, Thx, Thy, Thz, dx, dy, dz)
+        lap_Th = laplacian_3d(Th, dThx, dThy, dThz, dx, dy, dz)
         lap_q3 = laplacian_3d(q3, d3x, d3y, d3z, dx, dy, dz)
 
         # Calculation of source/reaction terms
@@ -240,7 +240,7 @@ def run(
         # CFL condition for advection
         dtAdv = sigma * min(dx, dy, dz) / vmax
         if (dtAdv < dt):
-            raise RuntimeError(f"Violación CFL: dtAdv={dtAdv:.3e} < dt={dt:.3e} en paso n={n}")  
+            raise RuntimeError(f"CFL violation: dtAdv={dtAdv:.3e} < dt={dt:.3e} at step n={n}")  
         
         # Explicit update of variables at interior nodes
         q1_new[1:-1, 1:-1, 1:-1] += dt * (lap_q1 + R1) 
@@ -277,4 +277,4 @@ def run(
 
     end = time.time()
     print(f"Simulation time: {end - start:.3f} seconds")
-    print(f"Datos guardados en: {out_name}")
+    print(f"Data saved in: {out_name}")

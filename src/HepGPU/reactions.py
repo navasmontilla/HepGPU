@@ -156,7 +156,7 @@ def R_q1(q1,Tc):
     array_like
         Total reaction term for q1.
     """
-    return f1M1(q1) + f1M5(q1,Tc)          # virus (q1)
+    return f1M1(q1) + f1M5(q1,Tc)          
 
 def R_Th(q1,Th,xi,q1_integral):
     """
@@ -178,7 +178,7 @@ def R_Th(q1,Th,xi,q1_integral):
     array_like
         Total reaction term for Th.
     """
-    return fthM2(q1_integral,Th,xi) + fthM6(q1,Th)     # células T helper (Th)
+    return fthM2(q1_integral,Th,xi) + fthM6(q1,Th)    
 
 def R_Tc(q1,Tc,xi,q1_integral):
     """
@@ -200,7 +200,7 @@ def R_Tc(q1,Tc,xi,q1_integral):
     array_like
         Total reaction term for Tc.
     """
-    return ftcM2(q1_integral,Tc,xi) + ftcM6(q1,Tc)     # células T cytotoxic (Tc)
+    return ftcM2(q1_integral,Tc,xi) + ftcM6(q1,Tc)   
 
 def R_q3(q1,Th,q3):
     """
@@ -220,7 +220,7 @@ def R_q3(q1,Th,q3):
     array_like
         Total reaction term for q3.
     """
-    return f3M3(q1,Th,q3)                  # citoquinas (q3)
+    return f3M3(q1,Th,q3)              
 
 
 # Function to set reaction parameters from a dictionary, allowing for easy parameter updates without modifying the core reaction functions.
