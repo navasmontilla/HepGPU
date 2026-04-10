@@ -454,3 +454,103 @@ def export_zarr_to_png(
         print(f"Saved {phase_plot_path}")
     
     return frame_paths
+
+def export_zarr_to_2d_snapshot(
+    zarr_file="output.zarr",
+    output_path="spatial_snapshot.png",
+    variables_group="variables",
+    step=0,
+    cmap="viridis",
+    dpi=300
+):
+    """
+    Export a single 2D spatial snapshot from a Zarr simulation.
+
+    This function is intended for effective 2D simulations stored in a thin
+    3D grid (typically nz = 3). It extracts the central z-slice and creates
+    one 2x2 figure with:
+        - q1
+        - Th
+        - Tc
+        - q3
+
+    Parameters
+    ----------
+    zarr_file : str
+        Path to the Zarr simulation file.
+    output_path : str
+        Output PNG file path.
+    variables_group : str
+        Name of the Zarr group containing the variables.
+    step : int
+        Snapshot index to export.
+    cmap : str
+        Matplotlib colormap for the contour plots.
+    dpi : int
+        Resolution of the saved figure.
+
+    Returns
+    -------
+    None
+    """
+    store = zarr.open(zarr_file, mode="r")
+    variables = store[variables_group]
+
+    q1 = variables["q1"]
+    Th = variables["Th"]
+    Tc = variables["Tc"]
+    q3 = variables["q3"]
+
+    dx = store.attrs["dx"]
+    dy = store.attrs["dy"]
+
+    nt, nx, ny, nz = q1.shape
+
+    if not (0 <= step < nt):
+        raise ValueError(f"step must be between 0 and {nt-1}, got {step}")
+
+    mid = nz // 2
+
+    x = np.arange(nx) * dx
+    y = np.arange(ny) * dy
+    X, Y = np.meshgrid(x, y, indexing="ij")
+
+    fig, axs = plt.subplots(2, 2, figsize=(10, 8), constrained_layout=True)
+
+    data_q1 = np.array(q1[step, :, :, mid])
+    cp1 = axs[0, 0].contourf(X, Y, data_q1, levels=50, cmap=cmap)
+    axs[0, 0].set_title(f"Virus (q1), step {step}")
+    axs[0, 0].set_xlabel("x")
+    axs[0, 0].set_ylabel("y")
+    fig.colorbar(cp1, ax=axs[0, 0], label="q1")
+
+    data_Th = np.array(Th[step, :, :, mid])
+    cp2 = axs[0, 1].contourf(X, Y, data_Th, levels=50, cmap=cmap)
+    axs[0, 1].set_title(f"T helper (Th), step {step}")
+    axs[0, 1].set_xlabel("x")
+    axs[0, 1].set_ylabel("y")
+    fig.colorbar(cp2, ax=axs[0, 1], label="Th")
+
+    data_Tc = np.array(Tc[step, :, :, mid])
+    cp3 = axs[1, 0].contourf(X, Y, data_Tc, levels=50, cmap=cmap)
+    axs[1, 0].set_title(f"T cytotoxic (Tc), step {step}")
+    axs[1, 0].set_xlabel("x")
+    axs[1, 0].set_ylabel("y")
+    fig.colorbar(cp3, ax=axs[1, 0], label="Tc")
+
+    data_q3 = np.array(q3[step, :, :, mid])
+    cp4 = axs[1, 1].contourf(X, Y, data_q3, levels=50, cmap=cmap)
+    axs[1, 1].set_title(f"Cytokines (q3), step {step}")
+    axs[1, 1].set_xlabel("x")
+    axs[1, 1].set_ylabel("y")
+    fig.colorbar(cp4, ax=axs[1, 1], label="q3")
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+    fig.savefig(
+        output_path,
+        dpi=dpi,
+        bbox_inches="tight",
+        pad_inches=0.05
+    )
+    plt.close(fig)
