@@ -1,12 +1,12 @@
 import numpy as np
 from HepGPU.core import run
-from HepGPU.zarr_utils import export_zarr_to_vtk
+from HepGPU.zarr_utils import export_zarr_to_vtk, export_zarr_to_png
 import sys
 import os
 
 
 # ==========================================
-# Grid del test (solo para definir máscaras)
+# Grid del test (only for defining masks)
 # ==========================================
 
 nx, ny, nz = 41, 41, 41
@@ -18,40 +18,35 @@ z = np.linspace(0, Lz, nz)
 
 X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
-
 # ==========================================
-# Máscaras)
+# Define masks
 # ==========================================
 
-# Definición del dominio cilíndrico (tomando como entrada el eje x)
-xc, yc, zc = 0, 0, 0 # centro del dominio
-# Coordenada radial y angular
-R_xy = np.sqrt((X - xc)**2 + (Y - yc)**2 +  (Z - zc)**2) # distancia al centro del dominio en Z (plano XY)
+# Definition of the cylindrical domain (taking the x-axis as input)
+xc, yc, zc = 0, 0, 0 # center of the domain in Z (XY plane)
+R_xy = np.sqrt((X - xc)**2 + (Y - yc)**2 +  (Z - zc)**2) # distance to the center of the domain in Z (XY plane)
 
-R_interior = 0.21 * min(Lx, Ly, Lz)          # radio del cilindro interior (máximo 0.5)
-R_barrera_in = 0.70 * min(Lx, Ly, Lz)           # radio del cilindro barrera (máximo 0.5)
-R_barrera_out = 0.90 * min(Lx, Ly, Lz)         # radio exterior del cilindro barrera (máximo 0.5)
+R_inside = 0.21 * min(Lx, Ly, Lz)            # radius of the interior cylinder (maximum 0.5)
+R_barrier_in = 0.70 * min(Lx, Ly, Lz)        # radius of the barrier cylinder (maximum 0.5)
+R_barrier_out = 0.90 * min(Lx, Ly, Lz)       # exterior radius of the barrier cylinder (maximum 0.5)
 
-mask_inflow = (R_xy <= R_interior) # True dentro del cilindro
-mask_barrera = ( (X >= 0.5) & (X <= 0.6) & (Y >= 0.0) & (Y <= 0.80) & (Z >= 0.0) & (Z <= 1) )# True dentro de la barrera
+mask_inflow = (R_xy <= R_inside) # True inside the cylinder
+mask_barrier = ( (X >= 0.5) & (X <= 0.6) & (Y >= 0.0) & (Y <= 0.80) & (Z >= 0.0) & (Z <= 1) ) # True inside the barrier
 
-
-# valores transporte dentro de la máscara
+# transport values inside the mask
 barrier_values = (0.0, 0.0, 0.0, 0.0)
 
-
 masks = [
-    (mask_barrera, barrier_values)
+    (mask_barrier, barrier_values)
 ]
 
-
 # ==========================================
-# Ejecutar simulación
+# Run simulation
 # ==========================================
 
 if __name__ == "__main__":
     run(
-        use_gpu=True,
+        use_gpu=False,
 
         Lx=Lx,
         Ly=Ly,
@@ -61,7 +56,7 @@ if __name__ == "__main__":
         ny=ny,
         nz=nz,
 
-        tf=60 ,    
+        tf=1 ,    
         td=5,
         
         params={
@@ -80,9 +75,12 @@ if __name__ == "__main__":
 
     export_zarr_to_vtk(
         zarr_file="output.zarr",
-        output_dir="vtk_test"
+        output_dir="results/vtk"
     )
-    
-       
 
-    print("Test completado")
+    export_zarr_to_png(
+        zarr_file="output.zarr",
+        output_dir="results/plots"
+    )
+
+    print("Test completed successfully.")

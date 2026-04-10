@@ -1,12 +1,12 @@
 import numpy as np
 from HepGPU.core import run
-from HepGPU.zarr_utils import export_zarr_to_vtk,export_zarr_to_png
+from HepGPU.zarr_utils import export_zarr_to_vtk, export_zarr_to_png
 import sys
 import os
 
 
 # ==========================================
-# Grid del test (solo para definir máscaras)
+# Grid del test (only for defining masks)
 # ==========================================
 
 nx, ny, nz = 41, 3, 3
@@ -20,16 +20,13 @@ X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
 
 # ==========================================
-# Máscaras)
+# Define masks
 # ==========================================
 
-
-mask_inflow = (X <= 0.1) # True dentro del cilindro
-
-
+mask_inflow = (X <= 0.1) # True inside the cylinder
 
 # ==========================================
-# Ejecutar simulación
+# Run simulation
 # ==========================================
 
 if __name__ == "__main__":
@@ -64,12 +61,12 @@ if __name__ == "__main__":
             "a6c": 0.2,      # Tc decay rate
 
             "a3": 0.8,       # cytokine production
-            "a_nd": 0.6,      # cytokine degradation
+            "a_nd": 0.6,     # cytokine degradation
 
-            "dTc": 0.5,
-            "d1": 0.6,
-            "dTh": 0.9,
-            "d3": 0.5
+            "dTc": 0.5,      # Tc diffusion coefficient
+            "d1": 0.6,       # virus diffusion coefficient
+            "dTh": 0.9,      # Th diffusion coefficient
+            "d3": 0.5        # cytokine diffusion coefficient
         },
 
         mask_inflow=mask_inflow,
@@ -81,12 +78,12 @@ if __name__ == "__main__":
 
     export_zarr_to_vtk(
         zarr_file="output1D.zarr",
-        output_dir="resultados1D/vtk"
+        output_dir="results1D/vtk"
     )
 
     export_zarr_to_png(
         zarr_file="output1D.zarr",
-        output_dir="resultados1D/graficas"
+        output_dir="results1D/plots"
     )
 
-    print("Test completado")
+    print("Test completed successfully.")
