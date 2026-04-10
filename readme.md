@@ -35,4 +35,6 @@ Install dependencies:
 ```
 pip3 install matplotlib numpy zarr matplotlib 
 ```
+
+## Automated test
 All demos can be run on Google Colab [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](./demos/)
