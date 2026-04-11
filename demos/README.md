@@ -1,6 +1,6 @@
 # HepGPU Demos
 
-Collection of simple examples to showcase the capabilities of **HepGPU**.
+Collection of simple examples to showcase the capabilities of `HepGPU`.
 
 ## Examples
 
