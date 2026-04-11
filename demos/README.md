@@ -12,7 +12,7 @@ Collection of simple examples to showcase the capabilities of **HepGPU**.
 
 - 2D Barrier Case: Wave propagation and immune transport in a domain with obstacles. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/demos/Step3_2D/2D_barrier.ipynb)
 
-- 3D Segmented Liver: Simulation on a realistic liver geometry using medical segmentation data. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/demos/3D_liver_model/3D_segmented_liver.ipynb)
+- 3D Segmented Liver: Simulation on a realistic liver geometry using medical segmentation data. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/demos/3D_liver_model/3D_liver_segmented.ipynb)
 
 ## Notes
 
