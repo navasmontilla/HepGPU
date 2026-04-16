@@ -15,23 +15,23 @@ Custom liver segmentations can also be generated from CT scans (TAC) using tools
 ## 📁 Step2_1D
 
 - 1D Chronic vs Recovery: Comparison between chronic infection and recovery regimes.  
-  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/demos/Step2_1D/1D_cases.ipynb)  
+  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/examples/Step2_1D/1D_cases.ipynb)  
   - Script: `Step2_1D/1D_cases.py`
 - 1D Heterogeneous Domain: Simulation with a spatial barrier blocking transport.  
-  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/demos/Step2_1D/1D_heterogeneous_domain.ipynb)  
+  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/examples/Step2_1D/1D_heterogeneous_domain.ipynb)  
   - Script: `Step2_1D/1D_heterogeneous_domain.py`
 
 ## 📁 Step3_2D
 
 - 2D No Barrier Case: Wave propagation and immune transport in a basic domain.  
-  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/demos/Step3_2D/2D_no_barrier.ipynb)  
+  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/examples/Step3_2D/2D_no_barrier.ipynb)  
   - Script: `Step3_2D/2D_no_barrier.py`
 - 2D Barrier Case: Wave propagation and immune transport in a domain with obstacles.  
-  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/demos/Step3_2D/2D_barrier.ipynb)  
+  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/examples/Step3_2D/2D_barrier.ipynb)  
   - Script: `Step3_2D/2D_barrier.py`
 
 ## 📁 3D_liver_model
 
 - 3D Segmented Liver: Simulation on a realistic liver geometry using medical segmentation data.  
-  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/demos/3D_liver_model/3D_liver_segmented.ipynb)  
+  - Notebook: [Open in Colab](https://colab.research.google.com/github/navasmontilla/HepGPU/blob/main/examples/3D_liver_model/3D_liver_segmented.ipynb)  
   - Script: `3D_liver_model/3D_liver_segmented.py`
