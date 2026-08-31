@@ -42,8 +42,4 @@ All demos can be run on Google Colab [![Open In Colab](https://colab.research.go
 
 ## Results
 
-Supplementary numerical results and animations generated with `HepGPU` are available in the dedicated results repository:
-
-👉 [**HepGPU-Results**](https://github.com/evaa04/HepGPU-Results/tree/main)
-
-The repository includes results from 1D, 2D and realistic 3D liver simulations, including cases with and without internal barriers.
+Supplementary numerical results and animations generated with `HepGPU` are available in the dedicated results repository [**HepGPU-Results**](https://github.com/evaa04/HepGPU-Results/tree/main), which includes results from 1D, 2D and realistic 3D liver simulations, including cases with and without internal barriers.
