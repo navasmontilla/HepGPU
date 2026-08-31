@@ -6,7 +6,7 @@
 1. [Introduction](#introduction)
 2. [Installation](#installation-instructions)
 3. [Automated test](#automated-test)
-
+4. [Results](#results)
 
 ## Introduction
 
@@ -39,3 +39,11 @@ pip3 install matplotlib numpy zarr matplotlib
 ## Automated test
 
 All demos can be run on Google Colab [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](./examples/)
+
+## Results
+
+Supplementary numerical results and animations generated with `HepGPU` are available in the dedicated results repository:
+
+👉 [**HepGPU-Results**](https://github.com/evaa04/HepGPU-Results/tree/main)
+
+The repository includes results from 1D, 2D and realistic 3D liver simulations, including cases with and without internal barriers.
