@@ -1,8 +1,8 @@
 import os
 import numpy as np
 import SimpleITK as sitk
-
-from scipy.ndimage import zoom
+import zarr
+import matplotlib.pyplot as plt
 
 from HepGPU.core import run
 from HepGPU.zarr_utils import export_zarr_to_vtk, export_zarr_to_png, export_zarr_to_2d_snapshot
@@ -19,8 +19,7 @@ segmentation_file = "Segmentation_1.nrrd"
 # Grid
 # ==========================================
 
-nx, ny, nz = 64, 64, 36
-Lx, Ly, Lz = 1.0, 1.0, 1.0
+nx, ny, nz = 64, 64, 36      # 128, 128, 71
 
 
 # ==========================================
@@ -32,18 +31,74 @@ arr = sitk.GetArrayFromImage(img)   # expected shape: (z, y, x)
 
 labels_zyx = arr
 
-print("Segmentation shape:", labels_zyx.shape)
-print("Unique labels:", np.unique(labels_zyx))
+print("Original segmentation shape:", labels_zyx.shape)
+print("Original unique labels:", np.unique(labels_zyx))
+
+# ==========================================
+# Labels
+# ==========================================
+
+# .nrrd file tags
+ID_VEIN = 1
+ID_LOBES = [5, 6, 7, 8, 9, 10, 11, 12]
+
+
+# ==========================================
+# Crop segmentation to liver bounding box
+# ==========================================
+
+# mask_crop_zyx: boolean mask that is worth True where there is liver or vein
+mask_crop_zyx = np.zeros_like(labels_zyx, dtype=bool) 
+mask_crop_zyx |= (labels_zyx == ID_VEIN)
+for label in ID_LOBES:
+    mask_crop_zyx |= (labels_zyx == label)
+
+z_idx, y_idx, x_idx = np.where(mask_crop_zyx) # coordinates of all useful voxels 
+
+# minimal box that contains the liver
+zmin, zmax = z_idx.min(), z_idx.max()
+ymin, ymax = y_idx.min(), y_idx.max()
+xmin, xmax = x_idx.min(), x_idx.max()
+
+margin = 5 # margin to avoid losing edges
+
+zmin = max(zmin - margin, 0)
+ymin = max(ymin - margin, 0)
+xmin = max(xmin - margin, 0)
+
+zmax = min(zmax + margin, labels_zyx.shape[0] - 1)
+ymax = min(ymax + margin, labels_zyx.shape[1] - 1)
+xmax = min(xmax + margin, labels_zyx.shape[2] - 1)
+
+labels_zyx = labels_zyx[zmin:zmax + 1, ymin:ymax + 1, xmin:xmax + 1] # reduce the volume
+
+print("Cropped segmentation shape:", labels_zyx.shape)
+print("Cropped unique labels:", np.unique(labels_zyx))
+
+
+# ==========================================
+# Real physical size of cropped domain
+# ==========================================
+
+spacing = img.GetSpacing()  # (x, y, z) in mm
+
+nz_crop, ny_crop, nx_crop = labels_zyx.shape # number of voxels in (z, y, x)
+
+Lx = nx_crop * spacing[0] / 1000.0 # in m
+Ly = ny_crop * spacing[1] / 1000.0
+Lz = nz_crop * spacing[2] / 1000.0
+
+print("Real cropped domain size:")
+print(f"Lx = {Lx:.4f} m")
+print(f"Ly = {Ly:.4f} m")
+print(f"Lz = {Lz:.4f} m")
 
 
 # ==========================================
 # Build masks in native segmentation space
 # ==========================================
 
-ID_VEIN = 1
-ID_LOBES = [5, 6, 7, 8, 9, 10, 11, 12]
-
-mask_vein_zyx = (labels_zyx == ID_VEIN)
+mask_vein_zyx = (labels_zyx == ID_VEIN) # voxels that contain the tag 1 (ID_VEIN)
 
 mask_left_lobe_2_zyx     = (labels_zyx == ID_LOBES[0])
 mask_right_lobe_8_zyx    = (labels_zyx == ID_LOBES[1])
@@ -75,22 +130,27 @@ mask_post_lobe_6     = np.transpose(mask_post_lobe_6_zyx,     (2, 1, 0))
 # Resample masks to simulation grid
 # ==========================================
 
-sx, sy, sz = mask_vein.shape
-zx, zy, zz = nx / sx, ny / sy, nz / sz
+def resample_mask_nn(mask, new_shape):
+    sx, sy, sz = mask.shape                 # original size (x, y, z)
+    nx_new, ny_new, nz_new = new_shape      # new shape (nx, ny, nz)
 
-def resample_mask(mask):
-    return zoom(mask.astype(np.uint8), (zx, zy, zz), order=0).astype(bool)
+    # sampling indices
+    ix = np.round(np.linspace(0, sx - 1, nx_new)).astype(int)
+    iy = np.round(np.linspace(0, sy - 1, ny_new)).astype(int)
+    iz = np.round(np.linspace(0, sz - 1, nz_new)).astype(int)
 
-mask_vein = resample_mask(mask_vein)
+    return mask[np.ix_(ix, iy, iz)].astype(bool) # reconstruct the mask using those indices
 
-mask_left_lobe_2     = resample_mask(mask_left_lobe_2)
-mask_right_lobe_8    = resample_mask(mask_right_lobe_8)
-mask_central_lobe_4a = resample_mask(mask_central_lobe_4a)
-mask_left_lobe_3     = resample_mask(mask_left_lobe_3)
-mask_central_lobe_4b = resample_mask(mask_central_lobe_4b)
-mask_post_lobe_7     = resample_mask(mask_post_lobe_7)
-mask_right_lobe_5    = resample_mask(mask_right_lobe_5)
-mask_post_lobe_6     = resample_mask(mask_post_lobe_6)
+mask_vein = resample_mask_nn(mask_vein, (nx, ny, nz))
+
+mask_left_lobe_2     = resample_mask_nn(mask_left_lobe_2,     (nx, ny, nz))
+mask_right_lobe_8    = resample_mask_nn(mask_right_lobe_8,    (nx, ny, nz))
+mask_central_lobe_4a = resample_mask_nn(mask_central_lobe_4a, (nx, ny, nz))
+mask_left_lobe_3     = resample_mask_nn(mask_left_lobe_3,     (nx, ny, nz))
+mask_central_lobe_4b = resample_mask_nn(mask_central_lobe_4b, (nx, ny, nz))
+mask_post_lobe_7     = resample_mask_nn(mask_post_lobe_7,     (nx, ny, nz))
+mask_right_lobe_5    = resample_mask_nn(mask_right_lobe_5,    (nx, ny, nz))
+mask_post_lobe_6     = resample_mask_nn(mask_post_lobe_6,     (nx, ny, nz))
 
 
 # ==========================================
@@ -108,11 +168,12 @@ lobes = [
     mask_post_lobe_6,
 ]
 
-lobes = [m & (~mask_vein) for m in lobes]
+lobes = [m & (~mask_vein) for m in lobes] # remove vein from lobes
 
 occupied = mask_vein.copy()
 lobes_clean = []
 
+# only keep the voxels that are not occupied by the vein
 for m in lobes:
     mc = m & (~occupied)
     lobes_clean.append(mc)
@@ -129,12 +190,14 @@ for m in lobes:
     mask_post_lobe_6,
 ) = lobes_clean
 
-mask_liver = np.logical_or.reduce(lobes_clean)
-mask_background = ~occupied
+mask_liver = np.logical_or.reduce(lobes_clean) # the liver generates with clean lobes
+mask_background = ~occupied                # mask for the background
+mask_domain = mask_liver | mask_vein       # mask for the domain (liver + vein)
 
 print("Vein voxels:", mask_vein.sum())
 print("Liver voxels:", mask_liver.sum())
 print("Background voxels:", mask_background.sum())
+print("Domain voxels (liver + vein):", mask_domain.sum())
 
 
 # ==========================================
@@ -146,14 +209,15 @@ background_values = (0.0, 0.0, 0.0, 0.0)
 masks = [
     (mask_background, background_values),
 
-    (mask_left_lobe_2,     (0.57, 0.85, 0.45, 0.48)),
-    (mask_right_lobe_8,    (0.63, 0.90, 0.55, 0.52)),
-    (mask_central_lobe_4a, (0.60, 0.88, 0.48, 0.50)),
-    (mask_left_lobe_3,     (0.57, 0.85, 0.45, 0.48)),
-    (mask_central_lobe_4b, (0.58, 0.87, 0.46, 0.49)),
-    (mask_post_lobe_7,     (0.63, 0.90, 0.55, 0.52)),
-    (mask_right_lobe_5,    (0.63, 0.90, 0.55, 0.52)),
-    (mask_post_lobe_6,     (0.63, 0.90, 0.55, 0.52)),
+    # (d1, dTh, dTc, d3)
+    (mask_left_lobe_2,     (0.006, 0.08, 0.05, 0.04)),
+    (mask_right_lobe_8,    (0.008, 0.09, 0.07, 0.05)),
+    (mask_central_lobe_4a, (0.007, 0.085, 0.06, 0.045)),
+    (mask_left_lobe_3,     (0.006, 0.08, 0.05, 0.04)),
+    (mask_central_lobe_4b, (0.007, 0.085, 0.06, 0.045)),
+    (mask_post_lobe_7,     (0.008, 0.09, 0.07, 0.05)),
+    (mask_right_lobe_5,    (0.008, 0.09, 0.07, 0.05)),
+    (mask_post_lobe_6,     (0.008, 0.09, 0.07, 0.05)),
 ]
 
 
@@ -162,32 +226,40 @@ masks = [
 # ==========================================
 
 params = {
+
     "a1": 1.0,
     "C1": 1.0,
     "epsilon": 0.05,
-    "kappa": 0.01,
-    "a5": 0.05,
-    "a2h": 2.0,
+    "kappa": 0.05,
+
+    "a5": 0.036,
+
+    "a2h": 14.0,
     "Cth": 8.0,
     "a6h": 0.2,
-    "a2c": 2.0,
+
+    "a2c": 8.0,
     "Ctc": 15.0,
-    "a6c": 0.2,
-    "a3": 0.8,
-    "a_nd": 0.6,
+    "a6c": 0.03,
+
+    "a3": 0.6,
+    "a_nd": 1.0,
 }
 
-out_name = "output_3d_liver_segmented.zarr"
-results_dir = "results_3d_liver_segmented"
-
+out_name = "output_3d_liver_segmented_Prueba2_t100_L_real_prueba_nueva_FINAL_NUEVA_NUEVA_NUEVA_NUEVA.zarr"
+results_dir = "results_3d_liver_segmented_Prueba2_t100_L_real_prueba_nueva_FINAL_NUEVA_NUEVA_NUEVA_NUEVA"
 
 # ==========================================
 # Run simulation
 # ==========================================
 
 if __name__ == "__main__":
+
+    tf=100
+    td=1
+
     run(
-        use_gpu=False,
+        use_gpu=True,
         Lx=Lx,
         Ly=Ly,
         Lz=Lz,
@@ -196,8 +268,8 @@ if __name__ == "__main__":
         ny=ny,
         nz=nz,
 
-        tf=5,
-        td=1,
+        tf=tf,
+        td=td,
 
         sigma=0.15,
         params=params,
@@ -207,20 +279,68 @@ if __name__ == "__main__":
         out_name=out_name,
     )
 
+    store = zarr.open(out_name, mode="a")
+    store.attrs["tf"] = tf
+    store.attrs["td"] = td
+
+    # ==========================================
+    # Save geometry fields in Zarr
+    # ==========================================
+
+    lobes_field = np.zeros((nx, ny, nz), dtype=np.float32)
+
+    lobes_field[mask_left_lobe_2] = 2
+    lobes_field[mask_right_lobe_8] = 8
+    lobes_field[mask_central_lobe_4a] = 41
+    lobes_field[mask_left_lobe_3] = 3
+    lobes_field[mask_central_lobe_4b] = 42
+    lobes_field[mask_post_lobe_7] = 7
+    lobes_field[mask_right_lobe_5] = 5
+    lobes_field[mask_post_lobe_6] = 6
+
+    if "geometry" in store:
+        del store["geometry"]
+
+    geometry_grp = store.create_group("geometry")
+
+    geometry_grp.create(
+        "xi",
+        data=mask_vein.astype(np.float32),
+        chunks=(nx, ny, nz)
+    )
+
+    geometry_grp.create(
+        "liver",
+        data=mask_liver.astype(np.float32),
+        chunks=(nx, ny, nz)
+    )
+
+    geometry_grp.create(
+        "lobes",
+        data=lobes_field.astype(np.float32),
+        chunks=(nx, ny, nz)
+    )
+    # ==========================================
+    # Graphics in Zarr
+    # ==========================================
+
     export_zarr_to_vtk(
         zarr_file=out_name,
         output_dir=os.path.join(results_dir, "vtk"),
+        geom_group="geometry",
+        export_coefficients=True,
     )
 
     export_zarr_to_png(
         zarr_file=out_name,
         output_dir=os.path.join(results_dir, "plots"),
+        mask_domain=mask_domain,
     )
 
     export_zarr_to_2d_snapshot(
         zarr_file=out_name,
-        output_path=os.path.join(results_dir, "spatial_snapshot_step_400.png"),
-        step=10,
+        output_path=os.path.join(results_dir, "plots", "spatial_snapshot_step50.png"),
+        step=50,
     )
 
     print("3D segmented-liver simulation completed successfully.")
