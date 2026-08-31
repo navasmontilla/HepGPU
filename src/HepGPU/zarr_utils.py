@@ -151,12 +151,14 @@ def save_time_step(tp, use_gpu, arrays, variables, save_index):
         q3_array[save_index] = q3
         
         
-def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variables_group="variables", coef_group="coefficients", geom_group=None):
+def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variables_group="variables", coef_group="coefficients", geom_group=None, export_coefficients=True):
     """
     Export a Zarr simulation to VTK image files (.vti).
 
-    Each saved time step is exported as a separate `.vti` file containing the
-    four model variables as point data.
+    Each saved time step is exported as a separate `.vti` file containing:
+        - State variables: q1, Th, Tc, q3
+        - Optional transport coefficients: d1, dTh, dTc, d3
+        - Optional geometry fields: xi, liver, fibrosis, lobes
 
     Parameters
     ----------
@@ -179,29 +181,66 @@ def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variabl
     store = zarr.open(zarr_file, mode="r")
 
     variables_grp = store[variables_group]
-    diffusion_advection_grp = store[coef_group]
     
     # Read variable arrays
     q1 = variables_grp["q1"]
     Th = variables_grp["Th"]
     Tc = variables_grp["Tc"]
     q3 = variables_grp["q3"]
-    
-    # Read coefficient arrays if needed
-    d1 = diffusion_advection_grp["d1"]
-    dTh = diffusion_advection_grp["dTh"]
-    dTc = diffusion_advection_grp["dTc"]
-    d3 = diffusion_advection_grp["d3"]
-
-    # Read geometry if specified (currently ignored)
-    xi = None
-    #geometria_grp = store[geom_group]
-    #xi = geometria_grp["xi"]
 
     dx = store.attrs["dx"]
     dy = store.attrs["dy"]
     dz = store.attrs["dz"]
 
+    spatial_shape = q1.shape[1:]
+
+    # Read coefficient fields
+    coefficient_data = {}
+
+    if export_coefficients:
+        if coef_group not in store:
+            raise ValueError(f"Coefficient group '{coef_group}' not found in Zarr store.")
+
+        coefficients_grp = store[coef_group]
+
+        for name in ["d1", "dTh", "dTc", "d3"]:
+            if name not in coefficients_grp:
+                raise ValueError(f"Coefficient field '{name}' not found in group '{coef_group}'.")
+
+            coeff = coefficients_grp[name]
+
+            # Coefficients are static in this model and saved at index 0
+            field = np.array(coeff[0])
+
+            if field.shape != spatial_shape:
+                raise ValueError(
+                    f"Coefficient field '{name}' has shape {field.shape}, "
+                    f"but expected {spatial_shape}"
+                )
+
+            coefficient_data[name] = field
+
+    # Read geometry fields
+    geometry_data = {}
+
+    if geom_group is not None:
+        if geom_group not in store:
+            raise ValueError(f"Geometry group '{geom_group}' not found in Zarr store.")
+
+        geometry_grp = store[geom_group]
+
+        for name in geometry_grp.keys():
+            field = np.array(geometry_grp[name])
+
+            if field.shape != q1.shape[1:]:
+                raise ValueError(
+                    f"Geometry field '{name}' has shape {field.shape}, "
+                    f"but expected {q1.shape[1:]}"
+                )
+
+            geometry_data[name] = field
+
+    # Export VTK files
     os.makedirs(output_dir, exist_ok=True)
     print(f"Exporting {q1.shape[0]} time steps to .vti files...")
 
@@ -215,16 +254,21 @@ def export_zarr_to_vtk(zarr_file="output.zarr", output_dir="vtk_output", variabl
         output_path = os.path.join(output_dir, f"variables_{i:04d}")
 
         # Save the current time step as a VTK image file with the variables as point data
+        point_data = {
+            "q1": q1_i,
+            "Th": Th_i,
+            "Tc": Tc_i,
+            "q3": q3_i,
+        }
+
+        point_data.update(coefficient_data)
+        point_data.update(geometry_data)
+
         imageToVTK(
             output_path,
             origin=(0.0, 0.0, 0.0),
             spacing=(dx, dy, dz),
-            pointData={
-                "q1": q1_i,
-                "Th": Th_i,
-                "Tc": Tc_i,
-                "q3": q3_i
-            }
+            pointData=point_data
         )
         print(f"Saved: {output_path}.vti")
 
@@ -238,7 +282,8 @@ def export_zarr_to_png(
     make_animation=True,
     export_time_plot=True,
     export_phase_plot=True,
-    fps=10
+    fps=10,
+    mask_domain=None
 ):
     """
     Export simulation stored in Zarr to PNG images and optionally create
@@ -294,6 +339,22 @@ def export_zarr_to_png(
     Th = variables["Th"]
     Tc = variables["Tc"]
     q3 = variables["q3"]
+
+    if mask_domain is not None:
+        mask_domain = np.asarray(mask_domain, dtype=bool)
+
+        spatial_shape = q1.shape[1:]
+
+        if mask_domain.shape != spatial_shape:
+            raise ValueError(
+                f"mask_domain shape {mask_domain.shape} does not match "
+                f"simulation spatial shape {spatial_shape}"
+            )
+
+        mask_volume = np.sum(mask_domain) * store.attrs["dx"] * store.attrs["dy"] * store.attrs["dz"]
+
+        if mask_volume == 0:
+            raise ValueError("mask_domain is empty: it contains no True values.")
 
     dx = store.attrs["dx"]
     dy = store.attrs["dy"] 
@@ -383,10 +444,38 @@ def export_zarr_to_png(
         print(f"Animation saved to {gif_path}")
 
     if export_time_plot or export_phase_plot:
-        q1total = np.array([np.sum(np.array(q1[i])) * dx * dy * dz for i in range(nt)])
-        Thtotal = np.array([np.sum(np.array(Th[i])) * dx * dy * dz for i in range(nt)])
-        Tctotal = np.array([np.sum(np.array(Tc[i])) * dx * dy * dz for i in range(nt)])
-        q3total = np.array([np.sum(np.array(q3[i])) * dx * dy * dz for i in range(nt)])
+
+        if mask_domain is None:
+            q1total = np.array([np.sum(np.array(q1[i])) * dx * dy * dz for i in range(nt)])
+            Thtotal = np.array([np.sum(np.array(Th[i])) * dx * dy * dz for i in range(nt)])
+            Tctotal = np.array([np.sum(np.array(Tc[i])) * dx * dy * dz for i in range(nt)])
+            q3total = np.array([np.sum(np.array(q3[i])) * dx * dy * dz for i in range(nt)])
+
+            ylabel_suffix = "total"
+            file_suffix = ""
+
+        else:
+            domain_volume = np.sum(mask_domain) * dx * dy * dz
+
+            q1total = np.array([
+                np.sum(np.array(q1[i])[mask_domain]) * dx * dy * dz / domain_volume
+                for i in range(nt)
+            ])
+            Thtotal = np.array([
+                np.sum(np.array(Th[i])[mask_domain]) * dx * dy * dz / domain_volume
+                for i in range(nt)
+            ])
+            Tctotal = np.array([
+                np.sum(np.array(Tc[i])[mask_domain]) * dx * dy * dz / domain_volume
+                for i in range(nt)
+            ])
+            q3total = np.array([
+                np.sum(np.array(q3[i])[mask_domain]) * dx * dy * dz / domain_volume
+                for i in range(nt)
+            ])
+
+            ylabel_suffix = "mean in domain"
+            file_suffix = "_domain"
 
     # Create temporal graphs
     if export_time_plot:
@@ -416,7 +505,7 @@ def export_zarr_to_png(
         ax4.set_xlabel("time (s)")
         ax4.set_ylabel("q3(t)")
 
-        time_plot_path = os.path.join(output_dir, "temporal_evolution.png")
+        time_plot_path = os.path.join(output_dir, f"temporal_evolution{file_suffix}.png")
         fig.savefig(time_plot_path, dpi=300, bbox_inches="tight", pad_inches=0.05)
         plt.close(fig)
 
@@ -447,7 +536,7 @@ def export_zarr_to_png(
         axs[2].set_ylabel("Cytokines (q3)")
         axs[2].legend()
 
-        phase_plot_path = os.path.join(output_dir, "phase_diagram.png")
+        phase_plot_path = os.path.join(output_dir, f"phase_diagram{file_suffix}.png")
         fig.savefig(phase_plot_path, dpi=300, bbox_inches="tight", pad_inches=0.05)
         plt.close(fig)
 
