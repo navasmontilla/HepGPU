@@ -257,13 +257,25 @@ def run(
             u[:, :, 0] = u[:, :, 1]
             u[:, :, -1] = u[:, :, -2]
 
+        # FOR BARRIER IN THE LIVER
+        # Force fully blocked regions to remain zero
+        if masks is not None:
+            for mask, values in masks:
+                if values == (0.0, 0.0, 0.0, 0.0):
+                    mask_tp = tp.asarray(mask, dtype=bool)
+
+                    q1_new[mask_tp] = 0.0
+                    Th_new[mask_tp] = 0.0
+                    Tc_new[mask_tp] = 0.0
+                    q3_new[mask_tp] = 0.0
+
         # Update variables for the next iteration
         q1 = q1_new
         Th = Th_new
         Tc = Tc_new
         q3 = q3_new
 
-
+        
         if use_gpu:
             tp.cuda.Stream.null.synchronize() # Necesary to ensure all GPU computations are finished before saving data to Zarr
 
