@@ -288,5 +288,8 @@ def run(
 
 
     end = time.time()
-    print(f"Simulation time: {end - start:.3f} seconds")
+    sim_time = end - start
+    print(f"Simulation time: {sim_time:.3f} seconds")
     print(f"Data saved in: {out_name}")
+    
+    return sim_time
